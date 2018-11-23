@@ -30,8 +30,8 @@ import os.path
 
 
 #import networkx as nx
-from PyQt4.QtCore import *
-from qgis.core import * #QgsMapLayerRegistry, QgsVectorDataProvider, QgsField
+from PyQt4.QtCore import Qt
+from qgis.core import QgsMapLayerRegistry, QgsVectorDataProvider, QgsField, QgsSymbolV2, QgsRendererCategoryV2, QgsCategorizedSymbolRendererV2
 from qgis.gui import QgsMessageBar
 from PyQt4.QtGui import QProgressBar, QColor
 from PyQt4 import QtGui
@@ -315,9 +315,9 @@ class DisconnectedIslands:
                 # gather edges and components to which they belong
                 fid_comp = {}
                 for i, graph in enumerate(connected_components):
-                   for edge in graph.edges_iter(data=True):
+                   for edge in graph.edges(data=True):
                        fid_comp[edge[2].get('fid', None)] = i
-
+                
                 # write output to csv file
                 #with open('C:/Tmp/Components.csv', 'wb') as f:
                 #    w = csv.DictWriter(f, fieldnames=['fid', 'group'])
