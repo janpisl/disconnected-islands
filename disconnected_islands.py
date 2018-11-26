@@ -20,21 +20,23 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication 
-from PyQt4.QtGui import QAction, QIcon
+from __future__ import absolute_import
+from builtins import range
+from builtins import object
+from qgis.PyQt.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QVariant
+from qgis.PyQt.QtWidgets import QAction, QApplication, QProgressBar
+from qgis.PyQt.QtGui import QIcon, QColor
+from qgis.PyQt import QtGui
 # Initialize Qt resources from file resources.py
-import resources
+from . import resources
 # Import the code for the dialog
-from disconnected_islands_dialog import DisconnectedIslandsDialog
+from .disconnected_islands_dialog import DisconnectedIslandsDialog
 import os.path
 
 
 #import networkx as nx
-from PyQt4.QtCore import Qt
-from qgis.core import QgsMapLayerRegistry, QgsVectorDataProvider, QgsField, QgsSymbolV2, QgsRendererCategoryV2, QgsCategorizedSymbolRendererV2
+from qgis.core import Qgis, QgsProject, QgsVectorDataProvider, QgsField, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsGeometry
 from qgis.gui import QgsMessageBar
-from PyQt4.QtGui import QProgressBar, QColor
-from PyQt4 import QtGui
 #import csv
 from random import randint
 
@@ -43,7 +45,7 @@ from random import randint
 #sys.path.append('/path/to/dir')
 
 
-class DisconnectedIslands:
+class DisconnectedIslands(object):
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
@@ -199,7 +201,7 @@ class DisconnectedIslands:
         attrName = self.dlg.attributeNameEditBox.text()
         # TODO: If attrName is longer than 10, something fails later.  Move validation to a signal that checks storageType in the UI.
         if len(attrName) > 10 and aLayer.storageType() == 'ESRI Shapefile':
-            self.iface.messageBar().pushMessage("Error", "For ESRI Shapefiles, the maximum length of any attribute name is 10. Please choose a shorter attribute name.", level=QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage("Error", "For ESRI Shapefiles, the maximum length of any attribute name is 10. Please choose a shorter attribute name.", level=Qgis.Critical)
             return -3
         attrIdx = aLayer.dataProvider().fieldNameIndex(attrName)
         if attrIdx == -1: # attribute doesn't exist, so create it
@@ -209,14 +211,14 @@ class DisconnectedIslands:
                 attrIdx = aLayer.dataProvider().fieldNameIndex(attrName)
                 aLayer.updateFields()
                 if attrIdx == -1:
-                    self.iface.messageBar().pushMessage("Error", "Failed to create attribute!", level=QgsMessageBar.CRITICAL)
+                    self.iface.messageBar().pushMessage("Error", "Failed to create attribute!", level=Qgis.Critical)
                     return -1
             else:
-                self.iface.messageBar().pushMessage("Error", "Failed to add attribute!", level=QgsMessageBar.CRITICAL)
+                self.iface.messageBar().pushMessage("Error", "Failed to add attribute!", level=Qgis.Critical)
                 return -1
         else:
             if not self.dlg.overwriteCheckBox.isChecked():
-                self.iface.messageBar().pushMessage("Error", "Attribute already exists - please tick Overwrite to confirm!", level=QgsMessageBar.CRITICAL)
+                self.iface.messageBar().pushMessage("Error", "Attribute already exists - please tick Overwrite to confirm!", level=Qgis.Critical)
                 return -2
         return attrIdx
 
@@ -225,9 +227,9 @@ class DisconnectedIslands:
 
         try:
             import networkx
-#            self.iface.messageBar().pushMessage("Info", "NetworkX module is present.", level=QgsMessageBar.INFO)
+#            self.iface.messageBar().pushMessage("Info", "NetworkX module is present.", level=Qgis.Info)
         except ImportError:
-            self.iface.messageBar().pushMessage("Error in plugin disconnected-islands", "NetworkX module is required and missing. Please install it manually by executing, in a Terminal: sudo easy_install networkx.  Then restart QGIS.", level=QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage("Error in plugin disconnected-islands", "NetworkX module is required and missing. Please install it manually by executing, in a Terminal: sudo easy_install networkx.  Then restart QGIS.", level=Qgis.Critical)
             return -1
         return 0
 
@@ -259,9 +261,9 @@ class DisconnectedIslands:
             
             layerName = self.dlg.layerComboBox.currentText()
             try:
-                aLayer = QgsMapLayerRegistry.instance().mapLayersByName(layerName)[0]
+                aLayer = QgsProject.instance().mapLayersByName(layerName)[0]
             except:
-                self.iface.messageBar().pushMessage("Error", "Failed to load layer!", level=QgsMessageBar.CRITICAL)
+                self.iface.messageBar().pushMessage("Error", "Failed to load layer!", level=Qgis.Critical)
                 return -1
 
             try:
@@ -269,8 +271,8 @@ class DisconnectedIslands:
                 previousEditingMode = True
                 if not aLayer.isEditable():
                     aLayer.startEditing()
-                    #self.iface.messageBar().pushMessage("Info", "Layer " + aLayer.name() + " needs to be in edit mode", level=QgsMessageBar.INFO)
-                    #self.iface.messageBar().pushMessage("Error", "Layer " + aLayer.name() + " needs to be in edit mode", level=QgsMessageBar.CRITICAL)
+                    #self.iface.messageBar().pushMessage("Info", "Layer " + aLayer.name() + " needs to be in edit mode", level=Qgis.Info)
+                    #self.iface.messageBar().pushMessage("Error", "Layer " + aLayer.name() + " needs to be in edit mode", level=Qgis.Critical)
                     #return -2
                     previousEditingMode = False
                      
@@ -283,7 +285,7 @@ class DisconnectedIslands:
                 progress.setMaximum(aLayer.featureCount())
                 progress.setAlignment(Qt.AlignLeft|Qt.AlignVCenter)
                 progressMessageBar.layout().addWidget(progress)
-                self.iface.messageBar().pushWidget(progressMessageBar, self.iface.messageBar().INFO)          
+                self.iface.messageBar().pushWidget(progressMessageBar, Qgis.Info)          
                 
                 G = nx.Graph()
 
@@ -297,21 +299,24 @@ class DisconnectedIslands:
                     count += 1
                     progress.setValue(count)
                     done = aLayer.changeAttributeValue(feat.id(), attrIdx, -1)
-                    line = feat.geometry().asPolyline()
+                    geom = feat.geometry()
+                    QgsGeometry.convertToSingleType(geom)       # QGIS 3.x seems to load single LineString as MultiLineString??
+                    line = geom.asPolyline()
+                    
                     for i in range(len(line)-1):
                         G.add_edges_from([((int(line[i][0]/tolerance), int(line[i][1]/tolerance)), (int(line[i+1][0]/tolerance), int(line[i+1][1]/tolerance)), 
-                                          {'fid': feat.id()})])     # first scale by tolerance, then convert to int.  Before doing this, there were problems with floats not equating, thus creating disconnects that weren't there.
+                                          {'fid': feat.id()})])     # first scale by tolerance, then convert to int.  Before doing this, there were problems (in NetworkX v1) with floats not equating, thus creating disconnects that weren't there.
                     if count % 100 == 0:
-                        QtGui.qApp.processEvents()      # keep the UI responsive, every 100 features
+                        QApplication.processEvents()      # keep the UI responsive, every 100 features
 
                 aLayer.endEditCommand()
                 
-                self.iface.messageBar().pushMessage("Finding connected subgraphs, please wait...",  level=QgsMessageBar.WARNING)     # WARNING - to highlight the next stage, where we cannot show progress
-                QtGui.qApp.processEvents()
+                self.iface.messageBar().pushMessage("Finding connected subgraphs, please wait...",  level=Qgis.Warning)     # WARNING - to highlight the next stage, where we cannot show progress
+                QApplication.processEvents()
                 connected_components = list(nx.connected_component_subgraphs(G))    # this takes a long time.  TODO: how to show progress?
-                self.iface.messageBar().pushMessage("Updating group attribute...",  level=QgsMessageBar.INFO)
-                QtGui.qApp.processEvents()
-                
+                self.iface.messageBar().pushMessage("Updating group attribute...",  level=Qgis.Info)
+                QApplication.processEvents()
+                          
                 # gather edges and components to which they belong
                 fid_comp = {}
                 for i, graph in enumerate(connected_components):
@@ -324,7 +329,7 @@ class DisconnectedIslands:
                 #    w.writeheader()
                 #    for (fid, group) in fid_comp.items():
                 #        w.writerow({'fid': fid, 'group': group})
-
+                
                 aLayer.beginEditCommand("Update group attribute")
                 for (fid, group) in fid_comp.items():
                     done = aLayer.changeAttributeValue(fid, attrIdx, group)
@@ -336,18 +341,18 @@ class DisconnectedIslands:
                     categories = []
                     firstCat = True
                     for cat in groups:
-                        symbol = QgsSymbolV2.defaultSymbol(aLayer.geometryType())
+                        symbol = QgsSymbol.defaultSymbol(aLayer.geometryType())
                         symbol.setColor(QColor(randint(0,255), randint(0,255), randint(0,255)))
                         if firstCat:
                             firstCat = False
                         else:
                             symbol.setWidth(symbol.width()*5)
-                        category = QgsRendererCategoryV2(cat, symbol, "%d" % cat)
+                        category = QgsRendererCategory(cat, symbol, "%d" % cat)
                         categories.append(category)
 
                     field = self.dlg.attributeNameEditBox.text()
-                    renderer = QgsCategorizedSymbolRendererV2(field, categories)
-                    aLayer.setRendererV2(renderer)
+                    renderer = QgsCategorizedSymbolRenderer(field, categories)
+                    aLayer.setRenderer(renderer)
 
 #                    if self.iface.mapCanvas().isCachingEnabled():
 #                        aLayer.setCacheImage(None)
@@ -357,11 +362,11 @@ class DisconnectedIslands:
                     aLayer.endEditCommand()            
                    
                 self.iface.messageBar().clearWidgets()   
-                self.iface.messageBar().pushMessage("Found main network and %d disconnected islands in layer %s" % (len(groups)-1, aLayer.name()),  level=QgsMessageBar.SUCCESS)
+                self.iface.messageBar().pushMessage("Found main network and %d disconnected islands in layer %s" % (len(groups)-1, aLayer.name()),  level=Qgis.Success)
 
                 aLayer.commitChanges()
 #                if not previousEditingMode: 
     
             except Exception as e:
-                self.iface.messageBar().pushMessage("Error", "Exception caught: %s.  Please report an issue to the author of the plugin." % repr(e), level=QgsMessageBar.CRITICAL)
+                self.iface.messageBar().pushMessage("Error", "Exception caught: %s.  Please report an issue to the author of the plugin." % repr(e), level=Qgis.Critical)
                 
