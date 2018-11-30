@@ -308,6 +308,7 @@ class DisconnectedIslands(object):
                                           {'fid': feat.id()})])     # first scale by tolerance, then convert to int.  Before doing this, there were problems (in NetworkX v1) with floats not equating, thus creating disconnects that weren't there.
                     if count % 100 == 0:
                         QApplication.processEvents()      # keep the UI responsive, every 100 features
+                        #TODO: check to see if Esc pressed
 
                 aLayer.endEditCommand()
                 
