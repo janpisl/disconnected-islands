@@ -207,7 +207,7 @@
     </rect>
    </property>
    <property name="toolTip">
-    <string>Please find sample data in your plugins directory: ~/.qgis2/python/plugins/disconnected-islands/sample-data/islands.zip (NB: .qgis2 is normally a hidden directory.)</string>
+    <string>Please find sample data in your plugins directory: ...QGIS/QGIS3/profiles/default/python/plugins/disconnected-islands/sample-data/islands.zip</string>
    </property>
    <property name="text">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#a3a3a3;&quot;&gt;Hover over for local sample data&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
